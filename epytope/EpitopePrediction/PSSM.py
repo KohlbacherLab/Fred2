@@ -89,19 +89,18 @@ class APSSMEpitopePrediction(AEpitopePrediction):
                     continue
 
                 if alleles_string[a] not in result:
-                    result[alleles_string[a]] = {}
+                    result[alleles_string[a]] = {self.name+'Score': {}}
                 ##here is the prediction and result object missing##
                 for p in peps:
                     score = sum(pssm[i].get(p[i], 0.0) for i in range(length)) + pssm.get(-1, {}).get("con", 0)
-                    result[alleles_string[a]][pep_seqs[p]] = score
+                    result[alleles_string[a]][self.name+'Score'][pep_seqs[p]] = score
 
         if not result:
             raise ValueError("No predictions could be made with "
                              + self.name + " for given input. Check your epitope length and HLA allele combination.")
 
-        df_result = EpitopePredictionResult.from_dict(result)
-        df_result.index = pandas.MultiIndex.from_tuples([tuple((i, self.name)) for i in df_result.index],
-                                                        names=['Seq', 'Method'])
+        df_result = EpitopePredictionResult.from_dict(result, peps, self.name)
+        
         return df_result
 
 
@@ -610,7 +609,7 @@ class ARB(APSSMEpitopePrediction):
                 raise ValueError("Input is not of type Allele")
             alleles_string = {conv_a: a for conv_a, a in zip(self.convert_alleles(alleles), alleles)}
 
-        result = {}
+        scores = {}
         for length, peps in itertools.groupby(pep_seqs.keys(), key=lambda x: len(x)):
             peps = list(peps)
             # dynamicaly import prediction PSSMS for alleles and predict
@@ -625,7 +624,7 @@ class ARB(APSSMEpitopePrediction):
                     warnings.warn("No model found for %s with length %i" % (alleles_string[a], length))
                     continue
 
-                result[alleles_string[a]] = {}
+                scores[alleles_string[a]] = {}
                 ##here is the prediction and result object missing##
                 for p in peps:
                     score = sum(pssm[i].get(p[i], 0.0) for i in range(length)) + pssm.get(-1, {}).get("con", 0)
@@ -637,16 +636,15 @@ class ARB(APSSMEpitopePrediction):
                         score = 0.0001
                     elif score > 1e6:
                         score = 1e6
-                    result[alleles_string[a]][pep_seqs[p]] = score
-                    # print a, score, result
+                    scores[alleles_string[a]][pep_seqs[p]] = score
 
-        if not result:
+        if not scores:
             raise ValueError("No predictions could be made with " + self.name + " for given input. Check your"
                                                                                 "epitope length and HLA allele combination.")
+        
+        result = {allele: {self.name+"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
-        df_result = EpitopePredictionResult.from_dict(result)
-        df_result.index = pandas.MultiIndex.from_tuples([tuple((i, self.name)) for i in df_result.index],
-                                                        names=['Seq', 'Method'])
+        df_result = EpitopePredictionResult.from_dict(result, peps, self.name)
         return df_result
 
 
@@ -989,7 +987,7 @@ class CalisImm(APSSMEpitopePrediction):
                 raise ValueError("Input is not of type Allele")
             alleles_string = {conv_a: a for conv_a, a in zip(self.convert_alleles(alleles), alleles)}
 
-        result = {}
+        scores = {}
         pep_groups = list(pep_seqs.keys())
         pep_groups.sort(key=len)
         for length, peps in itertools.groupby(pep_groups, key=len):
@@ -1001,8 +999,8 @@ class CalisImm(APSSMEpitopePrediction):
             peps = list(peps)
             for a, allele in alleles_string.items():
 
-                if alleles_string[a] not in result:
-                    result[allele] = {}
+                if alleles_string[a] not in scores:
+                    scores[allele] = {}
 
                 # load matrix
                 try:
@@ -1016,15 +1014,15 @@ class CalisImm(APSSMEpitopePrediction):
                 for p in peps:
                     score = sum(self.__log_enrichment.get(p[i], 0.0) * importance[i]
                                 for i in range(length) if i not in pssm)
-                    result[allele][pep_seqs[p]] = score
+                    scores[allele][pep_seqs[p]] = score
 
-        if not result:
+        if not scores:
             raise ValueError("No predictions could be made with " + self.name + " for given input. Check your"
                                                                                 "epitope length and HLA allele combination.")
 
-        df_result = EpitopePredictionResult.from_dict(result)
-        df_result.index = pandas.MultiIndex.from_tuples([tuple((i, self.name)) for i in df_result.index],
-                                                        names=['Seq', 'Method'])
+        result = {allele: {self.name+"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
+
+        df_result = EpitopePredictionResult.from_dict(result, peps, self.name)
         return df_result
 
     def convert_alleles(self, alleles):

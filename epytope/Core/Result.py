@@ -11,7 +11,11 @@ __author__ = 'schubert'
 
 import abc
 import numpy
+from numpy.lib.arraysetops import isin
 import pandas
+from epytope.Core.Allele import Allele
+from epytope.Core.Peptide import Peptide
+import logging
 
 
 class AResult(pandas.DataFrame, metaclass=abc.ABCMeta):
@@ -50,23 +54,25 @@ class AResult(pandas.DataFrame, metaclass=abc.ABCMeta):
 class EpitopePredictionResult(AResult):
     """
         A :class:`~epytope.Core.Result.EpitopePredictionResult` object is a DataFrame with multi-indexing, where column
-        Ids are the prediction model (i.e HLA :class:`~epytope.Core.Allele.Allele` for epitope prediction), row ID the
-        target of the prediction (i.e. :class:`~epytope.Core.Peptide.Peptide`) and the second row ID the predictor
-        (e.g. BIMAS)
+        Ids contain the allelic information (i.e HLA :class:`~epytope.Core.Allele.Allele` for epitope prediction),
+        methodic information and for each method the score type (either Score or Rank). The row ID specifies the
+        target of the prediction (i.e. :class:`~epytope.Core.Peptide.Peptide`)
 
         EpitopePredictionResult
 
-        +--------------+-------------+-------------+-------------+-------------+
-        | Peptide Obj  | Method Name | Allele1 Obj | Allele2 Obj | Allele3 Obj |
-        +==============+=============+=============+=============+=============+
-        | Peptide1     | Method 1    |    0.324    |     0.56    |    0.013    |
-        +              +-------------+-------------+-------------+-------------+
-        |              | Method 2    |     20      |      15     |     23      |
-        +--------------+-------------+-------------+-------------+-------------+
-        | Peptide2     | Method 1    |    0.50     |     0.36    |    0.98     |
-        +              +-------------+-------------+-------------+-------------+
-        |              | Method 2    |     26      |      10     |     50      |
-        +--------------+-------------+-------------+-------------+-------------+
+        +-----------+-------------------------------+-------------------------------+
+        |  Allele   |             Allele1           |             Allele2           | 
+        +- - - - - -+- - - - - - - -+- - - - - - - -+- - - - - - - -+- - - - - - - -+
+        |  Method   |     Method1   |    Method2    |     Method1   |    Method2    |
+        +- - - - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+
+        | ScoreType | Score |  Rank | Score |  Rank | Score |  Rank | Score |  Rank |
+        +- - - - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+- - - -+
+        |  Peptides |       |       |       |       |       |       |       |       |
+        +===========+=======+=======+=======+=======+=======+=======+=======+=======+
+        | Peptide1  |  0.03 |  57.4 |  0.05 |  51.1 |  0.08 |  49.4 |  0.73 |  3.12 |
+        +-----------+-------+-------+-------+-------+-------+-------+-------+-------+
+        | Peptide2  |  0.32 |  13.2 |  0.31 |  14.1 |  0.25 |  22.1 |  0.11 |  69.1 |
+        +-----------+-------+-------+-------+-------+-------+-------+-------+-------+
 
     """
 
@@ -80,6 +86,7 @@ class EpitopePredictionResult(AResult):
                                                         threshold)
         :return: Filtered result object
         :rtype: :class:`~epytope.Core.Result.EpitopePredictionResult`
+        """
         """
         if isinstance(expressions, tuple):
             expressions = [expressions]
@@ -96,6 +103,9 @@ class EpitopePredictionResult(AResult):
         idx = [f for f in masks
                for _ in range(len(self.index.levels[1]))]
         return EpitopePredictionResult(self.loc[idx, :])
+        """
+        #TODO: has to be adjusted to new result structure
+        pass
 
     def merge_results(self, others):
         """
@@ -124,6 +134,41 @@ class EpitopePredictionResult(AResult):
             nans = ~true_zero & false_zero
             df[zero] = 0
             df[nans] = numpy.NaN
+
+        df = EpitopePredictionResult(df)
+        # Merge result of multiple predictors in others per allele
+        df_merged = pandas.concat([allele[1] for allele in df.groupby(level=0, axis=1)], axis=1)
+    
+        return df_merged
+
+    def from_dict(d, peps, method):
+        """
+        Loads nested dictionary with hierarchy:
+        {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': Rank1, 'Pep2': Rank2,..}, 'Allele2':...}
+        and returns an :class:`~epytope.Core.Result.EpitopePredictionResult` object
+
+        :param d: nested dictionary
+        :param peps: list of scored peptide strings
+        :param method: predictor method string
+        :return: A new :class:`~epytope.Core.Result.EpitopePredictionResult` object
+        :rtype: :class:`~epytope.Core.Result.EpitopePredictionResult`
+        """
+        scoreType = numpy.asarray([list(m.keys()) for m in [metrics for a, metrics in d.items()]]).flatten()
+        alleles = numpy.asarray([numpy.repeat(a, len(set(scoreType))) for a in d]).flatten()
+        if any(not isinstance(a, Allele) for a in alleles):
+            alleles = [Allele(a) for a in alleles]
+        meth = numpy.repeat(method, len(scoreType))
+
+        multi_cols = pandas.MultiIndex.from_arrays([alleles, meth, scoreType], names=["Allele", "Method", "ScoreType"])
+        df = pandas.DataFrame(float(0), index=peps, columns=multi_cols)
+        df.index.name = 'Peptides'
+       
+        # Fill DataFrame
+        for allele, metrics in d.items():
+            for metric, pep_scores in metrics.items():
+                for pep, score in pep_scores.items():
+                    df[allele][method][metric][pep] = score
+        
         return EpitopePredictionResult(df)
 
 

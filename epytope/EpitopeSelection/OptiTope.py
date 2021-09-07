@@ -39,6 +39,7 @@ from pyomo.environ import ConcreteModel, Set, Param, Var, Constraint, PositiveIn
 from pyomo.opt import SolverFactory, TerminationCondition
 
 from epytope.Core.Result import EpitopePredictionResult
+from epytope.Core.Peptide import Peptide
 from epytope.IO.Utils import capture_stdout
 
 class OptiTope(object):
@@ -61,7 +62,7 @@ class OptiTope(object):
         Jean-Paul Watson and David L. Woodruff. Springer, 2012.
     """
 
-    def __init__(self, results,  threshold=None, k=10, solver="glpk", verbosity=0):
+    def __init__(self, results,  threshold=None, k=10, solver="glpk", verbosity=0, rank=False):
         """
         :param result: Epitope prediction result object from which the epitope selection should be performed
         :type result: :class:`~epytope.Core.Result.EpitopePredictionResult`
@@ -70,14 +71,18 @@ class OptiTope(object):
         :param int k: The number of epitopes to select
         :param str solver: The solver to be used (default glpk)
         :param int verbosity: Integer defining whether additional debugg prints are made >0 => debug mode
+        :param bool rank: Boolean specifying which metric should be optimized
         """
 
         #check input data
         if not isinstance(results, EpitopePredictionResult):
             raise ValueError("first input parameter is not of type EpitopePredictionResult")
+        
+        # Check if input data supports rank metric
+        if not 'Rank' in results.columns.get_level_values(2) and rank:
+            raise ValueError("Rank metric cannot be found in the provided input")
 
-        _alleles = copy.deepcopy(results.columns.values.tolist())
-
+        _alleles = copy.deepcopy(list(set([cols[0] for cols in results.columns.values])))
         #test if allele prob is set, if not set allele prob uniform
         #if only partly set infer missing values (assuming uniformity of missing value)
         prob = []
@@ -128,15 +133,26 @@ class OptiTope(object):
         peps = {}
         cons = {}
 
-        #unstack multiindex df to get normal df based on first prediction method
-        #and filter for binding epitopes
-        method = results.index.values[0][1]
-        res_df = results.xs(results.index.values[0][1], level="Method")
-        res_df = res_df[res_df.apply(lambda x: any(x[a] > self.__thresh.get(a.name, -float("inf"))
+        # unstack multiindex df to get normal df based on first prediction method and score metric
+        method = results.columns[1][1]
+        metric = 1 if rank else 0
+        res_df = copy.deepcopy(results)
+        res_df.columns = res_df.columns.droplevel(1)
+        # Keep only the neceessary information: Allele, and Score/Rank of Peptides
+        # Multiindex structure is broken up here
+        res_df = res_df.xs(res_df.columns.values[metric][1], level="ScoreType", axis=1)
+
+        # and filter for binding epitopes depending on a (high) score or a (low) rank 
+        # with respect to the given threshold
+        if rank:
+            res_df = res_df[res_df.apply(lambda x: any(x[a] < self.__thresh.get(a, float("inf"))
+                                                   for a in res_df.columns), axis=1)]
+        else:
+            res_df = res_df[res_df.apply(lambda x: any(x[a] > self.__thresh.get(a, -float("inf"))
                                                    for a in res_df.columns), axis=1)]
 
         for tup in res_df.itertuples():
-            p = tup[0]
+            p = Peptide(tup[0])
             seq = str(p)
             peps[seq] = p
             for a, s in zip(res_df.columns, tup[1:]):
@@ -146,15 +162,22 @@ class OptiTope(object):
                                                       50000))) if a.name in self.__thresh else -float("inf")
                     except:
                         thr = 0
-
+                    
                     if s >= thr:
                         alleles_I.setdefault(a.name, set()).add(seq)
                     imm[seq, a.name] = min(1., max(0.0, 1.0 - math.log(s, 50000)))
                 else:
-                    if s > self.__thresh.get(a.name, -float("inf")):
-                        alleles_I.setdefault(a.name, set()).add(seq)
-                    imm[seq, a.name] = s
-
+                    # Determine the high scoring / low ranked peptides. If an allele is present in the result df but
+                    # not in the specified threshold, the scores with respect to the allel will be kept
+                    if rank:
+                        if s < self.__thresh.get(a, float("inf")):
+                            alleles_I.setdefault(a.name, set()).add(seq)
+                        imm[seq, a.name] = s
+                    else:
+                        if s > self.__thresh.get(a, -float("inf")):
+                            alleles_I.setdefault(a.name, set()).add(seq)
+                        imm[seq, a.name] = s
+            
             prots = set(pr for pr in p.get_all_proteins())
             cons[seq] = len(prots)
             for prot in prots:
@@ -176,7 +199,7 @@ class OptiTope(object):
         model.Q = Set(initialize=variations)
 
         model.E = Set(initialize=set(peps.keys()))
-
+        logging.warning(set(peps.keys()))
         model.A = Set(initialize=list(alleles_I.keys()))
         model.E_var = Set(model.Q, initialize=lambda mode, v: epi_var[v])
         model.A_I = Set(model.A, initialize=lambda model, a: alleles_I[a])
@@ -201,8 +224,8 @@ class OptiTope(object):
 
         # Objective definition
         model.Obj = Objective(
-            rule=lambda model: sum(model.x[e] * sum(model.p[a] * model.i[e, a] for a in model.A) for e in model.E),
-            sense=maximize)
+                rule=lambda model: sum(model.x[e] * sum(model.p[a] * model.i[e, a] for a in model.A) for e in model.E),
+                sense=maximize)
 
 
         #Obligatory Constraint (number of selected epitopes)
