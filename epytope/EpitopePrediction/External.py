@@ -922,7 +922,7 @@ class NetMHCpan_2_4(AExternalEpitopePrediction):
             pep_seq = row[PeptideIndex.NETMHCPAN_2_4]
             for i, a in enumerate(alleles):
                 scores[a][pep_seq] = row[ScoreIndex.NETMHCPAN_2_4 + i] 
-        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Allele2':...}
+        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Allele2':...}
         result = {allele: {"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
         return result
@@ -1407,7 +1407,7 @@ class NetMHCpan_2_8(AExternalEpitopePrediction):
                 if row[ScoreIndex.NETMHCPAN_2_8 + i * Offset.NETMHCPAN_2_8] != "1-log50k":     # Avoid header column, only access raw and rank scores
                     scores[a][pep_seq] = row[ScoreIndex.NETMHCPAN_2_8 + i * Offset.NETMHCPAN_2_8] 
                     ranks[a][pep_seq] = float(row[RankIndex.NETMHCPAN_2_8 + i * Offset.NETMHCPAN_2_8])
-        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
+        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
         result = {allele: {metric:(list(scores.values())[j] if metric == "Score" else list(ranks.values())[j]) for metric in ["Score", "Rank"]} for j, allele in enumerate(alleles)}
         return result
 
@@ -1455,7 +1455,7 @@ class NetMHCpan_3_0(NetMHCpan_2_8):
                 if row[ScoreIndex.NETMHCPAN_3_0 + i * Offset.NETMHCPAN_3_0] != "1-log50k":     # Avoid header column, only access raw and rank scores
                     scores[a][pep_seq] = row[ScoreIndex.NETMHCPAN_3_0 + i * Offset.NETMHCPAN_3_0] 
                     ranks[a][pep_seq] = float(row[RankIndex.NETMHCPAN_3_0 + i * Offset.NETMHCPAN_3_0])
-        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
+        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
         result = {allele: {metric:(list(scores.values())[j] if metric == "Score" else list(ranks.values())[j]) for metric in ["Score", "Rank"]} for j, allele in enumerate(alleles)}
         return result
 
@@ -1494,7 +1494,7 @@ class NetMHCpan_4_0(NetMHCpan_3_0):
                 if row[ScoreIndex.NETMHCPAN_4_0 + i * Offset.NETMHCPAN_4_0] != "1-log50k":     # Avoid header column, only access raw and rank scores
                     scores[a][pep_seq] = row[ScoreIndex.NETMHCPAN_4_0 + i * Offset.NETMHCPAN_4_0] 
                     ranks[a][pep_seq] = float(row[RankIndex.NETMHCPAN_4_0 + i * Offset.NETMHCPAN_4_0])
-        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
+        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
         result = {allele: {metric:(list(scores.values())[j] if metric == "Score" else list(ranks.values())[j]) for metric in ["Score", "Rank"]} for j, allele in enumerate(alleles)}
         return result
 
@@ -1944,7 +1944,7 @@ class NetMHCstabpan_1_0(AExternalEpitopePrediction):
                     for i, a in enumerate(alleles):
                         scores[a][pep_seq] = row[ScoreIndex.NETMHCSTABPAN_1_0 + i * Offset.NETMHCSTABPAN_1_0_W_SCORE] 
                         ranks[a][pep_seq] = float(row[RankIndex.NETMHCSTABPAN_1_0 + i * Offset.NETMHCSTABPAN_1_0_W_SCORE])
-                        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
+                        # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
                 result = {allele: {metric:(list(scores.values())[j] if metric == "Score" else list(ranks.values())[j]) for metric in ["Score", "Rank"]} for j, allele in enumerate(alleles)}
             else:
                 for row in f:
@@ -3975,7 +3975,7 @@ class NetMHCIIpan_3_0(AExternalEpitopePrediction):
             for i, a in enumerate(alleles):
                 scores[a][pep_seq] = float(row[ScoreIndex.NETMHCIIPAN_3_0 + i * Offset.NETMHCIIPAN_3_0])
                 ranks[a][pep_seq] = float(row[RankIndex.NETMHCIIPAN_3_0 + i * Offset.NETMHCIIPAN_3_0])
-                # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
+                # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': RankScore1, 'Pep2': RankScore2,..}}, 'Allele2':...}
         result = {allele: {metric:(list(scores.values())[j] if metric == "Score" else list(ranks.values())[j]) for metric in ["Score", "Rank"]} for j, allele in enumerate(alleles)}
 
         return result

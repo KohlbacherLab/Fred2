@@ -245,7 +245,7 @@ try:
                 raise ValueError("No predictions could be made with " + self.name +
                                 " for given input. Check your epitope length and HLA allele combination.")
             
-            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Allele2':...}
+            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Allele2':...}
             result = {allele: {"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
             # create EpitopePredictionResult object. This is a multi-indexed DataFrame
@@ -530,7 +530,7 @@ try:
                 raise ValueError("No predictions could be made with " + self.name +
                                 " for given input. Check your epitope length and HLA allele combination.")
 
-            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Allele2':...}
+            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Allele2':...}
             result = {allele: {"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
             # create EpitopePredictionResult object. This is a multi-indexed DataFrame
@@ -801,7 +801,7 @@ try:
                 raise ValueError("No predictions could be made with " + self.name +
                                 " for given input. Check your epitope length and HLA allele combination.")
 
-            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': AffScore1, 'Pep2': AffScore2,..}, 'Allele2':...}
+            # Create dictionary with hierarchy: {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Allele2':...}
             result = {allele: {"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
             # create EpitopePredictionResult object. This is a multi-indexed DataFrame

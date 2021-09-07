@@ -642,7 +642,7 @@ class ARB(APSSMEpitopePrediction):
             raise ValueError("No predictions could be made with " + self.name + " for given input. Check your"
                                                                                 "epitope length and HLA allele combination.")
         
-        result = {allele: {self.name+"_score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
+        result = {allele: {self.name+"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
         df_result = EpitopePredictionResult.from_dict(result, peps, self.name)
         return df_result
@@ -1020,7 +1020,7 @@ class CalisImm(APSSMEpitopePrediction):
             raise ValueError("No predictions could be made with " + self.name + " for given input. Check your"
                                                                                 "epitope length and HLA allele combination.")
 
-        result = {allele: {self.name+"_score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
+        result = {allele: {self.name+"Score":(list(scores.values())[j])} for j, allele in enumerate(alleles)}
 
         df_result = EpitopePredictionResult.from_dict(result, peps, self.name)
         return df_result

@@ -54,9 +54,9 @@ class AResult(pandas.DataFrame, metaclass=abc.ABCMeta):
 class EpitopePredictionResult(AResult):
     """
         A :class:`~epytope.Core.Result.EpitopePredictionResult` object is a DataFrame with multi-indexing, where column
-        Ids are the prediction model (i.e HLA :class:`~epytope.Core.Allele.Allele` for epitope prediction), row ID the
-        target of the prediction (i.e. :class:`~epytope.Core.Peptide.Peptide`) and the second row ID the predictor
-        (e.g. BIMAS)
+        Ids contain the allelic information (i.e HLA :class:`~epytope.Core.Allele.Allele` for epitope prediction),
+        methodic information and for each method the score type (either Score or Rank). The row ID specifies the
+        target of the prediction (i.e. :class:`~epytope.Core.Peptide.Peptide`)
 
         EpitopePredictionResult
 
@@ -104,7 +104,7 @@ class EpitopePredictionResult(AResult):
                for _ in range(len(self.index.levels[1]))]
         return EpitopePredictionResult(self.loc[idx, :])
         """
-        #TODO: has to be implemented
+        #TODO: has to be adjusted to new result structure
         pass
 
     def merge_results(self, others):
@@ -143,7 +143,15 @@ class EpitopePredictionResult(AResult):
 
     def from_dict(d, peps, method):
         """
-        Description
+        Loads nested dictionary with hierarchy:
+        {'Allele1': {'Score': {'Pep1': Score1, 'Pep2': Score2,..}, 'Rank': {'Pep1': Rank1, 'Pep2': Rank2,..}, 'Allele2':...}
+        and returns an :class:`~epytope.Core.Result.EpitopePredictionResult` object
+
+        :param d: nested dictionary
+        :param peps: list of scored peptide strings
+        :param method: predictor method string
+        :return: A new :class:`~epytope.Core.Result.EpitopePredictionResult` object
+        :rtype: :class:`~epytope.Core.Result.EpitopePredictionResult`
         """
         scoreType = numpy.asarray([list(m.keys()) for m in [metrics for a, metrics in d.items()]]).flatten()
         alleles = numpy.asarray([numpy.repeat(a, len(set(scoreType))) for a in d]).flatten()
